@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js Example</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <script>
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(80, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({
+            canvas: document.getElementById('canvas'),
+            antialias: true
+        });
+
+        // Adjust renderer size on window resize
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+
+        // Initialize renderer size
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        camera.position.set(0, 2, 5);
+
+        // Cube
+        const cubeGeometry = new THREE.BoxGeometry(1, 1, 1);
+        const cubeMaterial = new THREE.MeshStandardMaterial({
+            color: 0xf0f000,
+            metalness: 0.5,
+            roughness: 0.5,
+            flatShading: true
+        });
+        const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
+        cube.name = "Cube";
+        cube.position.set(4, 0.5, 0);
+        scene.add(cube);
+
+        // Sphere
+        const sphereGeometry = new THREE.SphereGeometry(0.9, 32, 32);
+        const sphereMaterial = new THREE.MeshStandardMaterial({
+            color: 0xff0000,
+            metalness: 0.5,
+            roughness: 0.5,
+            flatShading: true
+        });
+        const sphere = new THREE.Mesh(sphereGeometry, sphereMaterial);
+        sphere.name = "Sphere";
+        sphere.position.set(1.5, 0.5, 0);
+        scene.add(sphere);
+
+        // Cylinder
+        const cylinderGeometry = new THREE.CylinderGeometry(0.5, 0.5, 2, 32);
+        const cylinderMaterial = new THREE.MeshStandardMaterial({ color: 0x0000ff });
+        const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+        cylinder.name = "Cylinder";
+        cylinder.position.set(-0.75, 1, 0);
+        scene.add(cylinder);
+
+        // Plane
+        const planeGeometry = new THREE.PlaneGeometry(15, 15);
+        const planeMaterial = new THREE.MeshStandardMaterial({ color: 0x00ffff });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        plane.rotation.x = -Math.PI / 3;
+        plane.position.y = -1;
+        plane.position.z = 0;
+        plane.name = "Plane";
+        scene.add(plane);
+
+        // Lights
+        const ambientLight = new THREE.AmbientLight(0x0f0f0f, 0.5);
+        scene.add(ambientLight);
+        const pointLight = new THREE.PointLight(0xffffff, 1);
+        pointLight.position.set(5, 5, 5);
+        scene.add(pointLight);
+
+        // Raycaster
+        const raycaster = new THREE.Raycaster();
+
+        // Variables for dragging
+        let isDragging = false;
+        let dragObject = null;
+        let offset = new THREE.Vector3();
+
+        // Event listeners for mouse and touch events
+        document.getElementById('canvas').addEventListener('mousedown', onMouseDown);
+        document.getElementById('canvas').addEventListener('touchstart', onTouchStart);
+        document.getElementById('canvas').addEventListener('mouseup', onMouseUp);
+        document.addEventListener('touchend', onTouchEnd);
+
+        function onMouseDown(event) {
+            startDragging(event.clientX, event.clientY);
+        }
+
+        function onTouchStart(event) {
+            event.preventDefault();
+            const touch = event.touches[0];
+            startDragging(touch.clientX, touch.clientY);
+        }
+
+        function startDragging(clientX, clientY) {
+            const mousePosition = new THREE.Vector2();
+            mousePosition.x = (clientX / renderer.domElement.clientWidth) * 2 - 1;
+            mousePosition.y = -(clientY / renderer.domElement.clientHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mousePosition, camera);
+            const intersects = raycaster.intersectObjects([sphere, cube, cylinder], true);
+
+            if (intersects.length > 0) {
+                isDragging = true;
+                dragObject = intersects[0].object;
+
+                const intersection = intersects[0];
+                const worldPosition = new THREE.Vector3();
+                intersection.object.getWorldPosition(worldPosition);
+                offset.copy(worldPosition).sub(camera.position);
+            }
+        }
+
+        function onMouseUp(event) {
+            stopDragging();
+        }
+
+        function onTouchEnd(event) {
+            stopDragging();
+        }
+
+        function stopDragging() {
+            isDragging = false;
+            dragObject = null;
+        }
+
+        document.addEventListener('mousemove', onMouseMove);
+        document.addEventListener('touchmove', onTouchMove);
+
+        function onMouseMove(event) {
+            if (isDragging) {
+                moveObject(event.clientX, event.clientY);
+            }
+        }
+
+        function onTouchMove(event) {
+            event.preventDefault();
+            const touch = event.touches[0];
+            moveObject(touch.clientX, touch.clientY);
+        }
+
+        function moveObject(clientX, clientY) {
+            const mousePosition = new THREE.Vector2();
+            mousePosition.x = (clientX / renderer.domElement.clientWidth) * 2 - 1;
+            mousePosition.y = -(clientY / renderer.domElement.clientHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mousePosition, camera);
+            const intersects = raycaster.intersectObject(plane);
+
+            if (intersects.length > 0) {
+                const intersection = intersects[0];
+                const newPosition = new THREE.Vector3().copy(intersection.point.sub(offset));
+
+                const dampingFactor = 0.15; 
+                dragObject.position.lerp(newPosition, dampingFactor);
+            }
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            renderer.render(scene, camera);
+        }
+        animate();
+    </script>
+</body>
+</html>
+
+
+<!-- // document.getElementById('canvas').addEventListener('click', (event) => {
+    //     const mousePosition = new THREE.Vector2();
+    //     mousePosition.x = (event.clientX / renderer.domElement.clientWidth) * 2 - 1;
+    //     mousePosition.y = -(event.clientY / renderer.domElement.clientHeight) * 2 + 1;
+
+    //     raycaster.setFromCamera(mousePosition, camera);
+    //     const intersects = raycaster.intersectObjects(scene.children, true);
+    //     if (intersects.length > 0) {
+    //         const object = intersects[0].object;
+    //         alert(`You clicked on a ${object.name}!`);
+    //     }
+    // }); -->
