@@ -27,12 +27,20 @@
             antialias: true
         });
 
-        // Adjust renderer size on window resize
-        window.addEventListener('resize', () => {
-            renderer.setSize(window.innerWidth, window.innerHeight);
-            camera.aspect = window.innerWidth / window.innerHeight;
+            // Adjust renderer size on window resize
+        function onWindowResize() {
+            const width = document.documentElement.clientWidth;
+            const height = document.documentElement.clientHeight;
+
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
             camera.updateProjectionMatrix();
-        });
+        }
+
+        // Initialize renderer size
+        onWindowResize();
+        window.addEventListener('resize', onWindowResize);
+
 
         // Initialize renderer size
         renderer.setSize(window.innerWidth, window.innerHeight);
